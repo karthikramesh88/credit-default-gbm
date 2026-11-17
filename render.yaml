@@ -1,0 +1,10 @@
+# Render Blueprint: a free web service built from the Dockerfile.
+# Free instances sleep after 15 minutes without traffic; the first request
+# after that takes about a minute while it wakes.
+services:
+  - type: web
+    name: credit-default-gbm
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true

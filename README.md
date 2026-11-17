@@ -1,5 +1,7 @@
 # Credit-card default model (XGBoost)
 
+[![CI](https://github.com/karthikramesh88/credit-default-gbm/actions/workflows/ci.yml/badge.svg)](https://github.com/karthikramesh88/credit-default-gbm/actions/workflows/ci.yml)
+
 Predicts whether a credit-card customer will miss next month's payment, and wraps the model in what production use needs: a release gate, calibrated probabilities, reason codes, a scoring API, and drift monitoring.
 
 This is a personal portfolio project. The goal is hands-on experience in building, deploying and monitoring a gradient-boosted model end to end, not just training one in a notebook.
@@ -110,6 +112,20 @@ On 30,000 synthetic rows (held-out test set):
 | Logistic baseline | 0.814 | 0.628 | 0.533 | 0.083 |
 
 The synthetic data is built with thresholds, an interaction and a U-shape, so a straight-line model can't capture it fully. On linear synthetic data, the gate correctly *rejected* XGBoost because it didn't beat the baseline.
+
+## Deployment
+
+- **Container.** The `Dockerfile` downloads the UCI data (checksum-pinned), trains the model during the build, and fails the build unless the release gate approves it. A running container therefore always serves an approved model, and no data or model files live in git.
+- **CI.** On every push, GitHub Actions runs the tests, builds the container, starts it, and checks that `/score` ranks the risky example applicant above the safe one.
+- **Hosting.** `render.yaml` deploys the container to Render's free tier, which sleeps when idle, so the first request after a quiet spell takes about a minute.
+
+Try it:
+
+```bash
+curl -X POST <service-url>/score -H 'content-type: application/json' -d @examples/applicants.json
+```
+
+Interactive API docs are at `<service-url>/docs`.
 
 ## Design notes
 

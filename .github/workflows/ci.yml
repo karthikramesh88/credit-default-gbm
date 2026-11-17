@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.1"
+      - run: uv sync --frozen
+      - run: uv run pytest -q
+
+  container:
+    # Builds the image (which trains on the real data and must pass the release gate),
+    # then starts it and checks the API answers.
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t credit-default-gbm .
+      - run: docker run -d --name api -p 8000:8000 credit-default-gbm
+      - name: Wait for the API
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS localhost:8000/health && exit 0
+            sleep 2
+          done
+          docker logs api
+          exit 1
+      - name: Score sample applicants
+        run: |
+          curl -fsS -X POST localhost:8000/score \
+            -H 'content-type: application/json' \
+            -d @examples/applicants.json | tee scores.json
+          python3 - <<'EOF'
+          import json
+          s = json.load(open("scores.json"))["scores"]
+          risky, safe = s[0]["probability_of_default"], s[1]["probability_of_default"]
+          assert len(s) == 2 and risky > safe, (risky, safe)
+          print(f"ok: {risky:.3f} > {safe:.3f}")
+          EOF
