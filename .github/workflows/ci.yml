@@ -45,3 +45,25 @@ jobs:
           assert len(s) == 2 and risky > safe, (risky, safe)
           print(f"ok: {risky:.3f} > {safe:.3f}")
           EOF
+
+  deploy:
+    # Ships to the Hugging Face Space only after tests and the container check pass.
+    # Runs once the repo has an HF_SPACE variable ("user/space") and an HF_TOKEN secret.
+    needs: container
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.HF_SPACE != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan space
+          # Spaces read their settings from front matter at the top of README.md.
+          printf -- '---\ntitle: Credit Default Scoring\nemoji: 💳\ncolorFrom: blue\ncolorTo: green\nsdk: docker\napp_port: 8000\npinned: false\n---\n\n' > space_readme.md
+          cat README.md >> space_readme.md && mv space_readme.md README.md
+          git add -A && git commit -qm "Deploy ${GITHUB_SHA::7} from GitHub"
+          git push --force "https://hf:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" space:main

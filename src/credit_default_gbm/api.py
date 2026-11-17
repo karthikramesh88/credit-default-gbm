@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from . import model_store
@@ -59,6 +60,11 @@ def _to_frame(applicants: list[Applicant]) -> pd.DataFrame:
         row.update(zip(PAY_AMT, a.pay_amt))
         rows.append(row)
     return pd.DataFrame(rows)
+
+
+@app.get("/", include_in_schema=False)
+def home() -> RedirectResponse:
+    return RedirectResponse("/docs")
 
 
 @app.get("/health")

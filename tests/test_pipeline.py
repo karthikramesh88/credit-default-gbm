@@ -107,6 +107,7 @@ def test_api_scores_applicants(trained, monkeypatch):
     }
     with TestClient(app) as client:
         assert client.get("/health").json()["model_version"] == meta["version"]
+        assert client.get("/", follow_redirects=False).headers["location"] == "/docs"
         r = client.post("/score", json=[applicant])
         assert r.status_code == 200
         s = r.json()["scores"][0]

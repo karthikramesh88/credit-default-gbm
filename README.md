@@ -117,7 +117,7 @@ The synthetic data is built with thresholds, an interaction and a U-shape, so a 
 
 - **Container.** The `Dockerfile` downloads the UCI data (checksum-pinned), trains the model during the build, and fails the build unless the release gate approves it. A running container therefore always serves an approved model, and no data or model files live in git.
 - **CI.** On every push, GitHub Actions runs the tests, builds the container, starts it, and checks that `/score` ranks the risky example applicant above the safe one.
-- **Hosting.** `render.yaml` deploys the container to Render's free tier, which sleeps when idle, so the first request after a quiet spell takes about a minute.
+- **Hosting and continuous deployment.** After the tests and container check pass on `main`, CI pushes the code to a Hugging Face Space (Docker, free CPU), which rebuilds and serves it. A failing test or a gate rejection never reaches the live API.
 
 Try it:
 
